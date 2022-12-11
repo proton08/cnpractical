@@ -1,0 +1,63 @@
+#include<iostream>
+#include<cstdlib>
+#include<unistd.h>
+#include<ctime>
+using namespace std;
+
+class Receiver{
+  
+  int no_packets_received;
+  public:
+    Receiver(){
+      no_packets_received=0;
+    }
+    bool receive(int packet_no){
+      srand(time(0));
+      int flag=rand()%2;
+      if(flag==0){
+        cout<<"RECEIVER : Not Received Packet "<<packet_no<<endl;
+        sleep(1);
+        return false;
+      }
+      else{
+        cout<<"RECEIVER : Received Packet "<<packet_no<<endl;
+        sleep(1);
+        no_packets_received++;
+        return true;
+      }
+    }
+    void total_packets_received(){
+      cout<<"Total Packets Received : "<<no_packets_received;
+    }
+    friend class Sender;
+};
+class Sender{
+  int no_of_packets;
+  public:
+    Sender(int packet_no){
+      no_of_packets=packet_no;
+    }
+    void send(Receiver& r){
+      for(int i=0;i<no_of_packets;i++){
+        cout<<"SENDER : Sent Packet Number "<<i<<endl;
+        sleep(1);
+        if(r.receive(i)){
+          cout<<"SENDER : Acknowledgement received for packet number "<<i<<endl<<"------------------------------------------------------------------------------------"<<endl;
+          sleep(1);
+          continue;
+        }
+        else{
+          i--;
+        }
+      }
+    }
+};
+int main(){
+  int total_packets;
+  cout<<"How many packets - ";
+  cin>>total_packets;
+  Sender s(total_packets);
+  Receiver r;
+  s.send(r);
+  r.total_packets_received();
+}

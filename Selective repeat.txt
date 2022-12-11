@@ -1,0 +1,130 @@
+#include <iostream>
+#include <queue>
+#include <ctime>
+#include <unistd.h>
+using namespace std;
+class Frame{
+private:
+int ack_no;
+char data;
+public:
+Frame(){}
+Frame(int ack_no, char data){
+this->ack_no = ack_no;
+this->data = data;
+}
+char get_data(){
+return this->data;
+}
+int get_ack_no(){
+return this->ack_no;
+}
+};
+class Window{
+private:
+int size;
+queue<Frame> win;
+public:
+Window() : win(){
+size = 3;
+}
+Frame get_packet(){
+return this->win.front();
+}
+friend class Sender;
+};
+class Receiver{
+private:
+int len_message;
+char* messages;
+int cur_index;
+int expected_ack_no(){
+return this->cur_index % 4;
+}
+public:
+Receiver(int len){
+this->len_message = len;
+this->messages = new char[len];
+this->cur_index = 0;
+}
+void show_message(){
+cout << "Receiver - \t Message received = ";
+for (int i = 0; i < len_message; i++){
+cout << messages[i];
+}
+cout << endl;
+}
+int receive(Window& w){
+Frame cur_frame = w.get_packet();
+if (expected_ack_no() == cur_frame.get_ack_no()){
+cout << "Receiver - \tProcessing Packet " << cur_index+1 << endl;
+messages[cur_index] = cur_frame.get_data();
+cur_index++;
+sleep(1);
+}
+else{
+cout << "Receiver - \tDiscarded Frame (Redundant)" << endl;
+}
+cout << "Receiver - \tSending acknowledgement" << endl;
+sleep(1);
+return cur_frame.get_ack_no();
+}
+friend class Sender;
+};
+class Sender{
+private:
+string message;
+int ack_no;
+int len_message;
+Window sending;
+int cur_index;
+void increase_ack_no(){
+ack_no = (ack_no+1) % 4;
+}
+void add_packet_to_window(){
+cout << "Sender - \tLoading packet to window" << endl;
+sending.win.push(Frame(ack_no, message[cur_index]));
+cur_index++;
+increase_ack_no();
+sleep(1);
+}
+public:
+Sender(string message, int len_message){
+this->message = message;
+this->ack_no = 0;
+this->len_message = len_message;
+this->cur_index = 0;
+}
+void send(Receiver& r){
+// Loading up the sending window
+for (int i = 0; i < sending.size; i++){
+add_packet_to_window();
+}
+cout << endl;
+int cur_packet_sending = 1;
+while (cur_index < len_message || !sending.win.empty()){
+int ack_rec = -1;
+do{
+sleep(1);
+cout << "Sender -\tSending packet number " << cur_packet_sending << " to
+receiver "<< endl;
+ack_rec = r.receive(sending);
+} while (ack_rec == -1);
+cout << "Sender -\tAcknowledgement Received"<< endl;
+sending.win.pop();
+cur_packet_sending++;
+// load in the new packet (if possible)
+if (cur_index < len_message){
+add_packet_to_window();
+}
+cout << endl;
+}
+}
+};
+int main(){
+Sender s("Hello World" , 11);
+Receiver r(11);
+s.send(r);
+r.show_message();
+return 0;
+}
